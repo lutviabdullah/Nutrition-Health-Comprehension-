@@ -1,0 +1,260 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib import style
+import warnings
+warnings.filterwarnings('ignore')
+
+# Set style
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
+
+# Create sample data for South Asian countries
+# Note: In real analysis, you would load actual data from sources like FAO, WHO, or World Bank
+countries = ['India', 'Pakistan', 'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan', 'Maldives', 'Afghanistan']
+
+# Sample data: Sugar consumption per capita (kg/year) - Hypothetical values based on typical patterns
+sugar_consumption = {
+    'Country': countries,
+    'Sugar_Consumption_kg_per_capita': [25.6, 32.4, 18.2, 30.8, 12.5, 8.7, 35.2, 10.3],
+    'Population_millions': [1400, 240, 170, 22, 30, 0.8, 0.5, 40],
+    'Yearly_Sugar_Consumption_kt': [35840, 7776, 3094, 677.6, 375, 6.96, 17.6, 412],  # in thousand tons
+    'Urban_Population_%': [35, 37, 38, 18, 20, 41, 46, 26],
+    'GDP_per_capita_USD': [2100, 1500, 1900, 3850, 1200, 3200, 10500, 500]
+}
+
+# Create DataFrame
+df = pd.DataFrame(sugar_consumption)
+print("=" * 70)
+print("SOUTH ASIA SUGAR CONSUMPTION ANALYSIS")
+print("=" * 70)
+print("\nInitial Dataset:")
+print(df.to_string(index=False))
+
+# Calculate total consumption for each country
+df['Total_Consumption_kt'] = df['Population_millions'] * df['Sugar_Consumption_kg_per_capita']
+
+print("\n" + "=" * 70)
+print("BASIC STATISTICS")
+print("=" * 70)
+print(f"\nDataset Shape: {df.shape}")
+print(f"\nBasic Statistics:")
+print(df[['Sugar_Consumption_kg_per_capita', 'Population_millions', 
+          'Total_Consumption_kt', 'GDP_per_capita_USD']].describe())
+
+print("\n" + "=" * 70)
+print("RANKING ANALYSIS")
+print("=" * 70)
+
+# Sort by per capita consumption
+df_sorted_per_capita = df.sort_values('Sugar_Consumption_kg_per_capita', ascending=False)
+print("\n1. Ranking by Per Capita Sugar Consumption (kg/year):")
+for i, (country, value) in enumerate(zip(df_sorted_per_capita['Country'], 
+                                         df_sorted_per_capita['Sugar_Consumption_kg_per_capita']), 1):
+    print(f"{i:2}. {country:15}: {value:5.1f} kg/year")
+
+# Sort by total consumption
+df['Total_Consumption_kt'] = df['Population_millions'] * df['Sugar_Consumption_kg_per_capita']
+df_sorted_total = df.sort_values('Total_Consumption_kt', ascending=False)
+
+print("\n\n2. Ranking by Total Sugar Consumption (thousand tons/year):")
+for i, (country, value) in enumerate(zip(df_sorted_total['Country'], 
+                                         df_sorted_total['Total_Consumption_kt']), 1):
+    print(f"{i:2}. {country:15}: {value:8.1f} thousand tons/year")
+
+# Identify highest consumers
+highest_per_capita = df_sorted_per_capita.iloc[0]
+highest_total = df_sorted_total.iloc[0]
+
+print("\n" + "=" * 70)
+print("KEY FINDINGS")
+print("=" * 70)
+print(f"\n1. Highest Per Capita Consumption: {highest_per_capita['Country']}")
+print(f"   • Consumption: {highest_per_capita['Sugar_Consumption_kg_per_capita']:.1f} kg/year per person")
+print(f"   • Population: {highest_per_capita['Population_millions']:.1f} million")
+print(f"   • Urban Population: {highest_per_capita['Urban_Population_%']:.1f}%")
+print(f"   • GDP per capita: ${highest_per_capita['GDP_per_capita_USD']:,.0f}")
+
+print(f"\n2. Highest Total Consumption: {highest_total['Country']}")
+print(f"   • Total Consumption: {highest_total['Total_Consumption_kt']:,.1f} thousand tons/year")
+print(f"   • Share of region's total: {highest_total['Total_Consumption_kt']/df['Total_Consumption_kt'].sum()*100:.1f}%")
+
+# Correlation analysis
+print("\n\n3. Correlation Analysis:")
+correlation_matrix = df[['Sugar_Consumption_kg_per_capita', 'GDP_per_capita_USD', 
+                         'Urban_Population_%']].corr()
+print("Correlation with Sugar Consumption:")
+print(f"• GDP per capita: {correlation_matrix.loc['Sugar_Consumption_kg_per_capita', 'GDP_per_capita_USD']:.3f}")
+print(f"• Urban Population %: {correlation_matrix.loc['Sugar_Consumption_kg_per_capita', 'Urban_Population_%']:.3f}")
+
+# Create visualizations
+fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+fig.suptitle('South Asia: Sugar Consumption Analysis', fontsize=16, fontweight='bold')
+
+# 1. Per Capita Consumption Bar Chart
+ax1 = axes[0, 0]
+bars1 = ax1.barh(df_sorted_per_capita['Country'], 
+                df_sorted_per_capita['Sugar_Consumption_kg_per_capita'],
+                color=plt.cm.RdYlGn(np.linspace(0.2, 0.8, len(countries))))
+ax1.set_xlabel('Kg per capita per year')
+ax1.set_title('Per Capita Sugar Consumption')
+ax1.axvline(x=df['Sugar_Consumption_kg_per_capita'].mean(), 
+           color='red', linestyle='--', alpha=0.7, label='Regional Average')
+ax1.legend()
+
+# 2. Total Consumption Bar Chart
+ax2 = axes[0, 1]
+bars2 = ax2.barh(df_sorted_total['Country'], 
+                df_sorted_total['Total_Consumption_kt'],
+                color=plt.cm.viridis(np.linspace(0.2, 0.8, len(countries))))
+ax2.set_xlabel('Thousand Tons per year')
+ax2.set_title('Total Sugar Consumption')
+ax2.set_xscale('log')  # Use log scale for better visualization
+
+# 3. Sugar vs GDP Scatter Plot
+ax3 = axes[0, 2]
+scatter = ax3.scatter(df['GDP_per_capita_USD'], 
+                     df['Sugar_Consumption_kg_per_capita'],
+                     s=df['Population_millions']/2,  # Bubble size represents population
+                     alpha=0.7, 
+                     c=df['Urban_Population_%'],
+                     cmap='coolwarm')
+ax3.set_xlabel('GDP per capita (USD)')
+ax3.set_ylabel('Sugar Consumption (kg/capita)')
+ax3.set_title('Sugar Consumption vs Economic Development')
+plt.colorbar(scatter, ax=ax3, label='Urban Population %')
+
+# Annotate countries on scatter plot
+for idx, row in df.iterrows():
+    ax3.annotate(row['Country'], 
+                (row['GDP_per_capita_USD'], row['Sugar_Consumption_kg_per_capita']),
+                xytext=(5, 5), textcoords='offset points', fontsize=8)
+
+# 4. Regional Distribution Pie Chart
+ax4 = axes[1, 0]
+total_consumption = df['Total_Consumption_kt'].sum()
+explode = [0.1 if country == highest_total['Country'] else 0 
+           for country in df_sorted_total['Country']]
+wedges, texts, autotexts = ax4.pie(df_sorted_total['Total_Consumption_kt'],
+                                  labels=df_sorted_total['Country'],
+                                  autopct='%1.1f%%',
+                                  startangle=90,
+                                  explode=explode,
+                                  shadow=True)
+ax4.set_title(f'Regional Distribution of Sugar Consumption\nTotal: {total_consumption:,.0f} thousand tons')
+
+# 5. Consumption vs Urbanization
+ax5 = axes[1, 1]
+ax5.scatter(df['Urban_Population_%'], 
+           df['Sugar_Consumption_kg_per_capita'],
+           s=100, alpha=0.7)
+ax5.set_xlabel('Urban Population (%)')
+ax5.set_ylabel('Sugar Consumption (kg/capita)')
+ax5.set_title('Sugar Consumption vs Urbanization')
+
+# Add trend line
+z = np.polyfit(df['Urban_Population_%'], df['Sugar_Consumption_kg_per_capita'], 1)
+p = np.poly1d(z)
+ax5.plot(df['Urban_Population_%'], p(df['Urban_Population_%']), 
+        "r--", alpha=0.5, label=f'Trend: y={z[0]:.2f}x+{z[1]:.2f}')
+ax5.legend()
+
+# 6. Summary Statistics
+ax6 = axes[1, 2]
+ax6.axis('off')
+summary_text = f"""
+REGIONAL SUMMARY:
+────────────────
+Total Population: {df['Population_millions'].sum():,.1f}M
+Average Consumption: {df['Sugar_Consumption_kg_per_capita'].mean():.1f} kg/capita
+Total Sugar Consumption: {df['Total_Consumption_kt'].sum():,.0f} kT
+
+TOP CONSUMERS:
+─────────────
+Per Capita: {highest_per_capita['Country']} ({highest_per_capita['Sugar_Consumption_kg_per_capita']:.1f} kg)
+Total: {highest_total['Country']} ({highest_total['Total_Consumption_kt']:,.0f} kT)
+
+CORRELATIONS:
+─────────────
+With GDP: {correlation_matrix.loc['Sugar_Consumption_kg_per_capita', 'GDP_per_capita_USD']:.3f}
+With Urbanization: {correlation_matrix.loc['Sugar_Consumption_kg_per_capita', 'Urban_Population_%']:.3f}
+"""
+ax6.text(0.1, 0.5, summary_text, fontsize=10, family='monospace',
+        verticalalignment='center', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+plt.tight_layout()
+plt.show()
+
+# Additional Analysis: Growth Projection
+print("\n" + "=" * 70)
+print("PROJECTION ANALYSIS (Hypothetical)")
+print("=" * 70)
+
+# Hypothetical growth rates based on typical patterns
+growth_rates = {
+    'India': 3.5, 'Pakistan': 2.8, 'Bangladesh': 4.2, 
+    'Sri Lanka': 2.5, 'Nepal': 3.0, 'Bhutan': 3.8, 
+    'Maldives': 4.5, 'Afghanistan': 2.0
+}
+
+# Project consumption for next 5 years
+projection_years = [2024, 2025, 2026, 2027, 2028]
+projection_data = []
+
+for year in projection_years:
+    year_data = {'Year': year}
+    for idx, row in df.iterrows():
+        country = row['Country']
+        growth = growth_rates.get(country, 3.0)
+        current_cons = row['Sugar_Consumption_kg_per_capita']
+        projected = current_cons * (1 + growth/100) ** (year - 2023)
+        year_data[country] = projected
+    projection_data.append(year_data)
+
+projection_df = pd.DataFrame(projection_data)
+print("\nProjected Per Capita Sugar Consumption (kg/year):")
+print(projection_df.round(1).to_string(index=False))
+
+# Create projection visualization
+plt.figure(figsize=(12, 6))
+for country in countries:
+    plt.plot(projection_df['Year'], projection_df[country], 
+            marker='o', linewidth=2, label=country)
+
+plt.xlabel('Year')
+plt.ylabel('Projected Sugar Consumption (kg/capita)')
+plt.title('South Asia: Projected Sugar Consumption Growth (2024-2028)')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+print("\n" + "=" * 70)
+print("RECOMMENDATIONS & INSIGHTS")
+print("=" * 70)
+print("""
+1. **Top Consumers**: Maldives shows highest per capita consumption, likely due to:
+   - Higher GDP per capita and urbanization
+   - Tourism industry influence
+   - Import-dependent food system
+
+2. **Population Impact**: India dominates total consumption due to massive population
+   - Represents majority of regional consumption
+   - Key target for public health interventions
+
+3. **Urbanization Correlation**: Positive correlation suggests:
+   - Urban areas have higher processed food consumption
+   - Lifestyle changes with economic development
+   - Greater access to sugary products
+
+4. **Public Health Implications**:
+   - Monitor diabetes and obesity rates
+   - Consider sugar taxation policies
+   - Promote public awareness campaigns
+
+5. **Data Collection Needs**:
+   - Obtain actual data from WHO/FAO databases
+   - Include historical trends
+   - Consider consumption by product type
+""")
